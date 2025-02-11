@@ -1,5 +1,5 @@
 {
     "name": "Jinja2Config",
-    "url": "https://github.com/tonyroberts/hassio-jinja2config",
-    "maintainer": "Tony Roberts <tony@tonyr.org>"
+    "url": "https://github.com/jhenkens/ha-jinja2config",
+    "maintainer": "Johan Henkens <johan@henkens.com>"
 }
