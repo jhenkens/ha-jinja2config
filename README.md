@@ -9,7 +9,7 @@ This is useful to simplify complex configuration with repeated components.
 
 If you find this addon useful, please consider supporting the development of this and my other addons and integrations by buying me a coffee
 
-<a href="https://www.buymeacoffee.com/tonyroberts" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+<a href="https://www.buymeacoffee.com/tonyroberts" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50px" width="210px"></a>
 
 ## Installation
 
