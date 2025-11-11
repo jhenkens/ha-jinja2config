@@ -1,0 +1,25 @@
+configuration:
+  log_level:
+    name: Log Level
+    description: "Set the log level (trace, debug, info, notice, warning, error, fatal)"
+  config_dir:
+    name: Config Directory
+    description: "Path to the Home Assistant config directory"
+  variable_start_string:
+    name: Jinja2 variable start delimiter
+    description: "Jinja2 variable start delimiter. Default: '{{'"
+  variable_end_string:
+    name: Jinja2 variable end delimiter
+    description: "Jinja2 variable end delimiter. Default: '}}'"
+  block_start_string:
+    name: Jinja2 block end delimiter
+    description: "Jinja2 block start delimiter. Default: '{%'"
+  block_end_string:
+    name: Jinja2 block end delimiter
+    description: "Jinja2 block end delimiter. Default: '%}''"
+  comment_start_string:
+    name: Jinja2 comment start delimiter
+    description: "Jinja2 comment start delimiter. Default: '{#'"
+  comment_end_string:
+    name: Jinja2 comment end delimiter
+    description: "Jinja2 comment end delimiter. Default: '#}'"

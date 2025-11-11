@@ -7,5 +7,5 @@ COPY requirements.txt /tmp/
 
 RUN \
   pip3 install -r /tmp/requirements.txt && \
-  apk add --no-cache inotify-tools nodejs npm && \
+  apk add --no-cache inotify-tools gettext nodejs npm && \
   npm install -g prettier
