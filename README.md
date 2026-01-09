@@ -9,7 +9,7 @@ This is useful to simplify complex configuration with repeated components.
 
 If you find this addon useful, please consider supporting the development of this and my other addons and integrations by buying me a coffee
 
-<a href="https://www.buymeacoffee.com/tonyroberts" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+<a href="https://www.buymeacoffee.com/tonyroberts" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50px" width="210px"></a>
 
 ## Installation
 
@@ -20,6 +20,42 @@ If you find this addon useful, please consider supporting the development of thi
 3. Add the URL for this github repo to add it.
 
 4. Find the ``jinja2config`` addon now the repository has been added and install it.
+
+## Configuration
+
+The addon supports the following configuration options:
+
+- `log_level`: Set the log level (trace, debug, info, notice, warning, error, fatal). Default: `debug`
+- `config_dir`: Path to the Home Assistant config directory. Default: `/config`
+- `variable_start_string`: Jinja2 variable start delimiter. Default: `{{`
+- `variable_end_string`: Jinja2 variable end delimiter. Default: `}}`
+- `block_start_string`: Jinja2 block start delimiter. Default: `{%`
+- `block_end_string`: Jinja2 block end delimiter. Default: `%}`
+- `comment_start_string`: Jinja2 comment start delimiter. Default: `{#`
+- `comment_end_string`: Jinja2 comment end delimiter. Default: `#}`
+
+### Custom Delimiters
+
+You can customize Jinja2 delimiters to avoid conflicts with other templating systems or syntax. For example, to use `((` and `))` for variables:
+
+```yaml
+variable_start_string: "(("
+variable_end_string: "))"
+block_start_string: "<%"
+block_end_string: "%>"
+comment_start_string: "/*"
+comment_end_string: "*/"
+```
+
+With these settings, your templates would use the custom delimiters:
+
+```yaml
+(( variable ))
+<% for item in items %>
+  ...
+<% endfor %>
+/* This is a comment */
+```
 
 ## Example
 

@@ -13,8 +13,8 @@ from concurrent.futures import ThreadPoolExecutor
 HASS_CONFIG_DIR = os.getenv('HASS_CONFIG_DIR')
 
 def check_dependencies():
-    if not shutil.which('jinja'):
-        print("jinja-cli must be installed: pip install jinja-cli (https://pypi.org/project/jinja-cli/)")
+    if not shutil.which('j2'):
+        print("jinjanator must be installed: pip install jinjanator (https://github.com/kpfleming/jinjanator)")
         time.sleep(1)
         exit(1)
     if not shutil.which('prettier'):
@@ -38,7 +38,7 @@ def compile(file_path: pathlib.Path):
     print(f"Compiling {file_path} to: {output_file}")
     error_log_file = file_path.parent / f"{file_path.name}.errors.log"
     result_content = f"# DO NOT EDIT: Generated from: {file_path.name}\n"
-    result = subprocess.run(['jinja', str(file_path)], capture_output=True)
+    result = subprocess.run(['j2', '--customize', '/etc/jinja2config/j2_customizations.py', str(file_path)], capture_output=True)
     if result.returncode == 0:
         result_content += result.stdout.decode()
         if os.path.exists(error_log_file):

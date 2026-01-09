@@ -1,2 +1,2 @@
-jinja-cli==1.2.2
+jinjanator
 watchdog

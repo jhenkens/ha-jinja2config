@@ -4,6 +4,36 @@
 # Home Assistant Community Add-on: jinja2config
 # ==============================================================================
 
-bashio::log.info "Starting jinja2config..."
+# Render the the customization file
+get_config() {
+    local val
+    val=$(bashio::config "$1" '')
+    [[ "$val" = "null" ]] && val=""
+    echo "$val"
+}
 
+export J2_VAR_START=$(get_config 'variable_start_string')
+export J2_VAR_END=$(get_config 'variable_end_string')
+export J2_BLOCK_START=$(get_config 'block_start_string')
+export J2_BLOCK_END=$(get_config 'block_end_string')
+export J2_COMMENT_START=$(get_config 'comment_start_string')
+export J2_COMMENT_END=$(get_config 'comment_end_string')
+
+bashio::log.debug "Configuring j2..."
+envsubst < /etc/jinja2config/j2_customizations.py.template > /etc/jinja2config/j2_customizations.py
+
+LOG_LEVEL=$(bashio::config 'log_level')
+LOG_LEVEL=${LOG_LEVEL,,}
+
+case "$LOG_LEVEL" in
+    trace)
+        while IFS= read -r line; do
+            bashio::log.trace "$line"
+        done < "/etc/jinja2config/j2_customizations.py"
+        ;;
+    *)
+        ;;
+esac
+
+bashio::log.info "Starting jinja2config..."
 exec /usr/bin/jinja2config.sh

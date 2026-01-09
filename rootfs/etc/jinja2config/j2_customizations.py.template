@@ -1,0 +1,19 @@
+
+def j2_environment_params():
+    """Return parameters for Jinja2 Environment"""
+    params = {}
+
+    if "${J2_VAR_START}":
+        params['variable_start_string'] = "${J2_VAR_START}"
+    if "${J2_VAR_END}":
+        params['variable_end_string'] = "${J2_VAR_END}"
+    if "${J2_BLOCK_START}":
+        params['block_start_string'] = "${J2_BLOCK_START}"
+    if "${J2_BLOCK_END}":
+        params['block_end_string'] = "${J2_BLOCK_END}"
+    if "${J2_COMMENT_START}":
+        params['comment_start_string'] = "${J2_COMMENT_START}"
+    if "${J2_COMMENT_END}":
+        params['comment_end_string'] = "${J2_COMMENT_END}"
+
+    return params
