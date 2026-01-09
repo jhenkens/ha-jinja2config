@@ -1,5 +1,6 @@
 #! /usr/bin/python3
 import os
+import sys
 import pathlib
 import subprocess
 import time
@@ -142,4 +143,8 @@ def main():
     observer.join()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
