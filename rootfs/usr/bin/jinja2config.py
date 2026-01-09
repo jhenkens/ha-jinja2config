@@ -1,6 +1,7 @@
 #! /usr/bin/python3
 import os
 import sys
+import signal
 import pathlib
 import subprocess
 import time
@@ -73,6 +74,14 @@ class ChangeRecorder:
     
 QUEUE: list[ChangeRecorder] = []
 WINDOW_START: float | None = None
+SHUTDOWN = False
+
+
+def signal_handler(signum, frame):
+    """Handle shutdown signals gracefully"""
+    global SHUTDOWN
+    print(f"Received signal {signum}, initiating graceful shutdown...", file=sys.stderr)
+    SHUTDOWN = True
 
 
 class JinjaEventHandler(FileSystemEventHandler):
@@ -114,7 +123,12 @@ def process_changes(changes: list[ChangeRecorder]):
             future.result()
 
 def main():
-    global QUEUE, WINDOW_START
+    global QUEUE, WINDOW_START, SHUTDOWN
+    
+    # Register signal handlers
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    
     check_dependencies()
     print(f"Compiling Jinja templates to YAML: {HASS_CONFIG_DIR}/**/*.yaml.jinja")
     for root, _, files in os.walk(HASS_CONFIG_DIR):
@@ -128,7 +142,7 @@ def main():
     observer.start()
 
     try:
-        while True:
+        while not SHUTDOWN:
             time.sleep(1)
             if QUEUE:
                 if WINDOW_START is None:
@@ -138,9 +152,11 @@ def main():
                     QUEUE = []
                     process_changes(queue)
                     WINDOW_START = None
-    except KeyboardInterrupt:
+    finally:
+        print("Stopping observer...", file=sys.stderr)
         observer.stop()
-    observer.join()
+        observer.join()
+        print("Observer stopped gracefully", file=sys.stderr)
 
 if __name__ == "__main__":
     try:
