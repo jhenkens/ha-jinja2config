@@ -103,6 +103,10 @@ The addon automatically watches `jinja2config.yaml` for changes. When you modify
 
 The addon automatically fetches all entities from your Home Assistant instance and makes them available in templates through the `ha_entities` variable. This is a dictionary where keys are entity IDs.
 
+Entities are refreshed:
+- At addon startup
+- Whenever `jinja2config.yaml` is modified (ensuring templates use current entity data)
+
 ```yaml
 # example.yaml.jinja
 # Access entity states and attributes

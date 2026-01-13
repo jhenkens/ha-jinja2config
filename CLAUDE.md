@@ -233,15 +233,18 @@ When compiling a template:
 
 ### Home Assistant API Integration
 
-At startup:
-1. `fetch_ha_entities()` is called to retrieve all entities from HA
-2. Uses `SUPERVISOR_TOKEN` environment variable for authentication
-3. Makes GET request to `http://supervisor/core/api/states`
-4. Converts entity list to dictionary keyed by entity_id
-5. Stores in `CACHED_HA_ENTITIES` global variable
-6. Gracefully handles API failures (entities simply won't be available in templates)
+At startup and when config changes:
+1. `load_config_variables()` is called
+2. This function also calls `fetch_ha_entities()` to retrieve all entities from HA
+3. Uses `SUPERVISOR_TOKEN` environment variable for authentication
+4. Makes GET request to `http://supervisor/core/api/states`
+5. Converts entity list to dictionary keyed by entity_id
+6. Stores in `CACHED_HA_ENTITIES` global variable
+7. Gracefully handles API failures (entities simply won't be available in templates)
 
-The entities are fetched only once at startup and remain cached throughout the addon's lifecycle.
+The entities are refreshed whenever:
+- The addon starts up
+- The `jinja2config.yaml` file is modified (triggers recompilation with fresh entity data)
 
 ## Configuration
 

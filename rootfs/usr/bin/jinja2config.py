@@ -154,8 +154,8 @@ def get_variables_for_file(file_path: pathlib.Path) -> dict:
     return base_vars
 
 def load_config_variables():
-    """Load variables from jinja2config.yaml and cache them"""
-    global CACHED_CONFIG_VARS
+    """Load variables from jinja2config.yaml and cache them. Also refresh HA entities."""
+    global CACHED_CONFIG_VARS, CACHED_HA_ENTITIES
     if CONFIG_FILE_PATH.exists():
         try:
             with open(CONFIG_FILE_PATH, 'r') as f:
@@ -175,6 +175,9 @@ def load_config_variables():
     else:
         print(f"{CONFIG_FILE_NAME} not found, using empty context")
         CACHED_CONFIG_VARS = {}
+    
+    # Refresh Home Assistant entities
+    CACHED_HA_ENTITIES = fetch_ha_entities()
 
 def check_dependencies():
     if not shutil.which('j2'):
@@ -339,12 +342,8 @@ def main():
     
     check_dependencies()
     
-    # Load config variables at startup
+    # Load config variables and fetch HA entities at startup
     load_config_variables()
-    
-    # Fetch Home Assistant entities at startup
-    global CACHED_HA_ENTITIES
-    CACHED_HA_ENTITIES = fetch_ha_entities()
     
     print(f"Compiling Jinja templates to YAML: {HASS_CONFIG_DIR}/**/*.yaml.jinja")
     for template_path in find_all_jinja_templates():
