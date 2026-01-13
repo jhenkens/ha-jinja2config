@@ -201,12 +201,14 @@ def recompile(file_path: pathlib.Path):
     compile(file_path)
 
 def find_all_jinja_templates():
-    """Find all .yaml.jinja template files in the config directory"""
+    """Find all .yaml.jinja template files in the config directory, excluding skipped files"""
     templates = []
     for root, _, files in os.walk(HASS_CONFIG_DIR):
         for file in files:
             if file.endswith('.yaml.jinja'):
-                templates.append(pathlib.Path(root) / file)
+                file_path = pathlib.Path(root) / file
+                if not is_file_skipped(file_path):
+                    templates.append(file_path)
     return templates
 
 @dataclass
