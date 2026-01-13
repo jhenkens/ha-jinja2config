@@ -198,7 +198,12 @@ def get_output_file(file_path: pathlib.Path):
 def remove(file_path: pathlib.Path):
     output_file = get_output_file(file_path)
     print(f"{file_path} deleted, removing: {output_file}")
-    os.remove(output_file)
+    try:
+        os.remove(output_file)
+    except FileNotFoundError:
+        print(f"Output file {output_file} does not exist, skipping removal")
+    except Exception as e:
+        print(f"Error removing {output_file}: {e}")
 
 def compile(file_path: pathlib.Path):
     # Check if this file should be skipped
