@@ -54,6 +54,14 @@ devices:
   thermostat_model: "generic"
   sensor_prefix: "esphome"
 
+# Skipped files - templates that should NOT be compiled
+# Use .skipped_files to prevent specific template files from being processed
+# The path is relative to your Home Assistant config directory
+.skipped_files:
+  - automations/disabled.yaml.jinja
+  - packages/experimental.yaml.jinja
+  - test/debug.yaml.jinja
+
 # File-specific configurations
 # Use .file_configs to override variables for specific template files
 # The path is relative to your Home Assistant config directory

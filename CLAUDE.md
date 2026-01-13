@@ -128,6 +128,18 @@ rooms:
 
 The `deep_merge()` function recursively merges nested dictionaries, so if both global and file-specific configs have a `settings` dictionary, they are merged together rather than the file-specific one replacing the global one entirely.
 
+**Skipped Files (`.skipped_files`):**
+
+Users can prevent specific files from being compiled using the `.skipped_files` key:
+
+```yaml
+.skipped_files:
+  - automations/disabled.yaml.jinja
+  - test/debug.yaml.jinja
+```
+
+The `is_file_skipped()` function checks if a file's relative path is in this list. Skipped files are ignored at startup, during file watching, and when the config changes.
+
 ### 2. Automatic File Watching
 
 - Watches recursively for all `.yaml.jinja` files
@@ -178,24 +190,26 @@ SHUTDOWN = False         # Graceful shutdown flag
 
 ### Helper Functions
 
+- `is_file_skipped()`: Checks if a file should be skipped based on `.skipped_files` configuration
 - `deep_merge()`: Recursively merges two dictionaries for file-specific config overrides
 - `get_variables_for_file()`: Returns merged global + file-specific variables for a template
 - `find_all_jinja_templates()`: Reusable function to scan for all `.yaml.jinja` files
 - `load_config_variables()`: Updates global cache with variables from config file
 - `get_output_file()`: Strips `.jinja` extension to get output filename
-- `compile()`: Core compilation logic using file-specific merged variables
+- `compile()`: Core compilation logic using file-specific merged variables (checks skipped files first)
 - `process_changes()`: Deduplicates and parallelizes compilation
 
 ### Variable Resolution for Files
 
 When compiling a template:
-1. `get_variables_for_file(file_path)` is called
-2. Base variables are extracted from `CACHED_CONFIG_VARS` (excluding `.file_configs` key)
-3. If `.file_configs` exists and contains an entry for the file's relative path:
+1. `is_file_skipped(file_path)` is checked first - if True, compilation is skipped
+2. `get_variables_for_file(file_path)` is called
+3. Base variables are extracted from `CACHED_CONFIG_VARS` (excluding `.file_configs` and `.skipped_files` keys)
+4. If `.file_configs` exists and contains an entry for the file's relative path:
    - `deep_merge(base_vars, file_specific_vars)` is called
    - Returns merged dictionary with file-specific overrides applied
-4. The merged variables are written to a temporary YAML file
-5. j2 (jinjanator) reads this file when processing the template
+5. The merged variables are written to a temporary YAML file
+6. j2 (jinjanator) reads this file when processing the template
 
 ## Configuration
 

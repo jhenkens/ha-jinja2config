@@ -18,6 +18,34 @@ CONFIG_FILE_NAME = 'jinja2config.yaml'
 CONFIG_FILE_PATH = pathlib.Path(HASS_CONFIG_DIR) / CONFIG_FILE_NAME
 CACHED_CONFIG_VARS = {}
 FILE_CONFIGS_KEY = '.file_configs'
+SKIPPED_FILES_KEY = '.skipped_files'
+
+def is_file_skipped(file_path: pathlib.Path) -> bool:
+    """Check if a file should be skipped based on .skipped_files configuration.
+    
+    Returns True if the file should be skipped, False otherwise.
+    The file path is relative to HASS_CONFIG_DIR.
+    """
+    if SKIPPED_FILES_KEY not in CACHED_CONFIG_VARS:
+        return False
+    
+    skipped_files = CACHED_CONFIG_VARS[SKIPPED_FILES_KEY]
+    if not isinstance(skipped_files, list):
+        return False
+    
+    # Get the relative path from HASS_CONFIG_DIR
+    try:
+        relative_path = file_path.relative_to(HASS_CONFIG_DIR)
+        relative_path_str = str(relative_path)
+        
+        # Check if this file is in the skipped list
+        if relative_path_str in skipped_files:
+            return True
+    except ValueError:
+        # File is not relative to HASS_CONFIG_DIR
+        pass
+    
+    return False
 
 def deep_merge(base: dict, override: dict) -> dict:
     """Deep merge two dictionaries, with override values taking precedence.
@@ -47,8 +75,9 @@ def get_variables_for_file(file_path: pathlib.Path) -> dict:
     Returns a deep merge of global variables with file-specific overrides.
     The file path is relative to HASS_CONFIG_DIR.
     """
-    # Start with base config (excluding .file_configs key)
-    base_vars = {k: v for k, v in CACHED_CONFIG_VARS.items() if k != FILE_CONFIGS_KEY}
+    # Start with base config (excluding special keys)
+    base_vars = {k: v for k, v in CACHED_CONFIG_VARS.items() 
+                 if k not in (FILE_CONFIGS_KEY, SKIPPED_FILES_KEY)}
     
     # Check if there are file-specific configs
     if FILE_CONFIGS_KEY not in CACHED_CONFIG_VARS:
@@ -120,6 +149,12 @@ def remove(file_path: pathlib.Path):
     os.remove(output_file)
 
 def compile(file_path: pathlib.Path):
+    # Check if this file should be skipped
+    if is_file_skipped(file_path):
+        relative_path = file_path.relative_to(HASS_CONFIG_DIR)
+        print(f"Skipping {relative_path} (in .skipped_files)")
+        return
+    
     output_file = get_output_file(file_path)
     print(f"Compiling {file_path} to: {output_file}")
     error_log_file = file_path.parent / f"{file_path.name}.errors.log"
@@ -196,7 +231,9 @@ class JinjaEventHandler(FileSystemEventHandler):
     def _handle(self, event):
         if not event.is_directory:
             if event.src_path.endswith('.yaml.jinja'):
-                QUEUE.append(ChangeRecorder(pathlib.Path(event.src_path)))
+                file_path = pathlib.Path(event.src_path)
+                if not is_file_skipped(file_path):
+                    QUEUE.append(ChangeRecorder(file_path))
             elif event.src_path == CONFIG_FILE_NAME:
                 self._recompile_all_templates()
                 

@@ -132,6 +132,24 @@ In this example:
 - `packages/lights.yaml.jinja` will have the global `default_temp: 20` plus its file-specific light variables
 - All other files use the global configuration
 
+### Skipping Files
+
+You can prevent specific template files from being compiled using the `.skipped_files` key. This is useful for temporarily disabling templates or excluding test/experimental files.
+
+```yaml
+# Files to skip (will not be compiled)
+.skipped_files:
+  - automations/disabled.yaml.jinja
+  - packages/experimental.yaml.jinja
+  - test/debug.yaml.jinja
+```
+
+Files listed in `.skipped_files`:
+- Will not be compiled at startup
+- Will be ignored when modified
+- Paths are relative to your config directory and case-sensitive
+- Useful for temporarily disabling templates without deleting them
+
 ## Example
 
 I set up smart thermostats to control the underfloor heating for multiple rooms, requiring a certain amount of similar config per room. Using a template the amount of hand written yaml is greatly reduced, making it easier to manage and change as needed.
