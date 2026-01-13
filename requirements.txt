@@ -1,3 +1,4 @@
 jinjanator
 watchdog
 PyYAML
+requests

@@ -8,6 +8,7 @@ import time
 import shutil
 import tempfile
 import yaml
+import requests
 from dataclasses import dataclass
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -17,8 +18,52 @@ HASS_CONFIG_DIR = os.getenv('HASS_CONFIG_DIR')
 CONFIG_FILE_NAME = 'jinja2config.yaml'
 CONFIG_FILE_PATH = pathlib.Path(HASS_CONFIG_DIR) / CONFIG_FILE_NAME
 CACHED_CONFIG_VARS = {}
+CACHED_HA_ENTITIES = None
 FILE_CONFIGS_KEY = '.file_configs'
 SKIPPED_FILES_KEY = '.skipped_files'
+HA_ENTITIES_KEY = 'ha_entities'
+
+# Home Assistant API configuration
+SUPERVISOR_TOKEN = os.getenv('SUPERVISOR_TOKEN')
+HA_API_URL = 'http://supervisor/core/api'
+
+def fetch_ha_entities():
+    """Fetch all entities from Home Assistant API.
+    
+    Returns a dictionary with entity_id as keys and entity state objects as values.
+    Returns None if the API is not accessible or an error occurs.
+    """
+    if not SUPERVISOR_TOKEN:
+        print("Warning: SUPERVISOR_TOKEN not available, cannot fetch HA entities")
+        return None
+    
+    try:
+        headers = {
+            'Authorization': f'Bearer {SUPERVISOR_TOKEN}',
+            'Content-Type': 'application/json',
+        }
+        
+        response = requests.get(
+            f'{HA_API_URL}/states',
+            headers=headers,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            entities = response.json()
+            # Convert to a dictionary keyed by entity_id for easier access
+            entity_dict = {entity['entity_id']: entity for entity in entities}
+            print(f"Fetched {len(entity_dict)} entities from Home Assistant")
+            return entity_dict
+        else:
+            print(f"Warning: Failed to fetch HA entities, status code: {response.status_code}")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"Warning: Error fetching HA entities: {e}")
+        return None
+    except Exception as e:
+        print(f"Warning: Unexpected error fetching HA entities: {e}")
+        return None
 
 def is_file_skipped(file_path: pathlib.Path) -> bool:
     """Check if a file should be skipped based on .skipped_files configuration.
@@ -78,6 +123,10 @@ def get_variables_for_file(file_path: pathlib.Path) -> dict:
     # Start with base config (excluding special keys)
     base_vars = {k: v for k, v in CACHED_CONFIG_VARS.items() 
                  if k not in (FILE_CONFIGS_KEY, SKIPPED_FILES_KEY)}
+    
+    # Add Home Assistant entities if available
+    if CACHED_HA_ENTITIES is not None:
+        base_vars[HA_ENTITIES_KEY] = CACHED_HA_ENTITIES
     
     # Check if there are file-specific configs
     if FILE_CONFIGS_KEY not in CACHED_CONFIG_VARS:
@@ -292,6 +341,10 @@ def main():
     
     # Load config variables at startup
     load_config_variables()
+    
+    # Fetch Home Assistant entities at startup
+    global CACHED_HA_ENTITIES
+    CACHED_HA_ENTITIES = fetch_ha_entities()
     
     print(f"Compiling Jinja templates to YAML: {HASS_CONFIG_DIR}/**/*.yaml.jinja")
     for template_path in find_all_jinja_templates():

@@ -3,6 +3,7 @@ description: "Compile Home Assistant config files from Jinja2 templates"
 version: "1.1.4"
 slug: "jinja2config"
 init: false
+homeassistant_api: true
 map:
   - config:rw
 arch:

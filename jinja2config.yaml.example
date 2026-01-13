@@ -2,6 +2,9 @@
 # Place this file as "jinja2config.yaml" in your Home Assistant config directory
 # These variables will be available to all your .yaml.jinja templates
 
+# Note: Home Assistant entities are automatically available as 'ha_entities' in all templates
+# Example: {{ ha_entities['sensor.temperature']['state'] }}
+
 # Simple variables
 house_name: "My Smart Home"
 default_temperature: 20

@@ -99,6 +99,49 @@ climate:
 
 The addon automatically watches `jinja2config.yaml` for changes. When you modify this file, all templates will be automatically recompiled with the new values.
 
+### Accessing Home Assistant Entities
+
+The addon automatically fetches all entities from your Home Assistant instance and makes them available in templates through the `ha_entities` variable. This is a dictionary where keys are entity IDs.
+
+```yaml
+# example.yaml.jinja
+# Access entity states and attributes
+
+sensor:
+  - platform: template
+    sensors:
+      living_room_temp_copy:
+        friendly_name: "Living Room Temperature"
+        value_template: "{{ ha_entities['sensor.living_room_temperature']['state'] }}"
+        unit_of_measurement: "°C"
+
+automation:
+  - alias: "Turn on heating when cold"
+    trigger:
+      - platform: numeric_state
+        entity_id: sensor.living_room_temperature
+        below: 18
+    action:
+      - service: climate.set_temperature
+        data:
+          entity_id: climate.living_room
+          # Access attributes from entity
+          temperature: {{ ha_entities['climate.living_room']['attributes']['min_temp'] }}
+
+# Filter entities by domain
+{% for entity_id in ha_entities.keys() %}
+  {% if entity_id.startswith('light.') %}
+- {{ entity_id }}  # Will list all light entities
+  {% endif %}
+{% endfor %}
+```
+
+Entity data structure:
+- `ha_entities['entity_id']['state']` - Current state
+- `ha_entities['entity_id']['attributes']` - All attributes
+- `ha_entities['entity_id']['last_changed']` - Last changed timestamp
+- `ha_entities['entity_id']['last_updated']` - Last updated timestamp
+
 ### File-Specific Configuration
 
 You can override or extend variables for specific template files using the `.file_configs` key. This is useful when different templates need different values while still sharing common configuration.

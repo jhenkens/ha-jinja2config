@@ -140,6 +140,22 @@ Users can prevent specific files from being compiled using the `.skipped_files` 
 
 The `is_file_skipped()` function checks if a file's relative path is in this list. Skipped files are ignored at startup, during file watching, and when the config changes.
 
+**Home Assistant Entities (`ha_entities`):**
+
+The addon automatically fetches all entities from Home Assistant via the Supervisor API and makes them available in all templates:
+
+```yaml
+# Templates can access entity states and attributes
+{{ ha_entities['sensor.temperature']['state'] }}
+{{ ha_entities['climate.living_room']['attributes']['current_temperature'] }}
+```
+
+- Entities are fetched once at startup and cached in `CACHED_HA_ENTITIES`
+- Uses the Supervisor token (`SUPERVISOR_TOKEN` env var) for authentication
+- Accesses HA via `http://supervisor/core/api/states`
+- Returns a dictionary with entity_id as keys
+- If the API is unavailable, entities are simply not added to templates (graceful degradation)
+
 ### 2. Automatic File Watching
 
 - Watches recursively for all `.yaml.jinja` files
@@ -163,6 +179,7 @@ Users can configure custom Jinja2 delimiters via add-on options to avoid conflic
   - `jinjanator`: Jinja2 CLI tool with customization support
   - `watchdog`: File system monitoring
   - `PyYAML`: YAML parsing for variable files
+  - `requests`: HTTP library for Home Assistant API calls
 
 - **System packages**:
   - `nodejs` + `npm`: Required for Prettier
@@ -173,10 +190,11 @@ Users can configure custom Jinja2 delimiters via add-on options to avoid conflic
 ### Global State Management
 
 ```python
-CACHED_CONFIG_VARS = {}  # Cached variables from jinja2config.yaml
-QUEUE = []               # Queue of file changes to process
-WINDOW_START = None      # Start of debounce window
-SHUTDOWN = False         # Graceful shutdown flag
+CACHED_CONFIG_VARS = {}     # Cached variables from jinja2config.yaml
+CACHED_HA_ENTITIES = None   # Cached entities from Home Assistant API
+QUEUE = []                  # Queue of file changes to process
+WINDOW_START = None         # Start of debounce window
+SHUTDOWN = False            # Graceful shutdown flag
 ```
 
 ### Change Processing Flow
@@ -190,10 +208,11 @@ SHUTDOWN = False         # Graceful shutdown flag
 
 ### Helper Functions
 
+- `fetch_ha_entities()`: Fetches all entities from Home Assistant via Supervisor API
 - `is_file_skipped()`: Checks if a file should be skipped based on `.skipped_files` configuration
 - `deep_merge()`: Recursively merges two dictionaries for file-specific config overrides
-- `get_variables_for_file()`: Returns merged global + file-specific variables for a template
-- `find_all_jinja_templates()`: Reusable function to scan for all `.yaml.jinja` files
+- `get_variables_for_file()`: Returns merged global + file-specific variables + HA entities for a template
+- `find_all_jinja_templates()`: Reusable function to scan for all `.yaml.jinja` files (excluding skipped)
 - `load_config_variables()`: Updates global cache with variables from config file
 - `get_output_file()`: Strips `.jinja` extension to get output filename
 - `compile()`: Core compilation logic using file-specific merged variables (checks skipped files first)
@@ -205,11 +224,24 @@ When compiling a template:
 1. `is_file_skipped(file_path)` is checked first - if True, compilation is skipped
 2. `get_variables_for_file(file_path)` is called
 3. Base variables are extracted from `CACHED_CONFIG_VARS` (excluding `.file_configs` and `.skipped_files` keys)
-4. If `.file_configs` exists and contains an entry for the file's relative path:
+4. Home Assistant entities are added as `ha_entities` if `CACHED_HA_ENTITIES` is available
+5. If `.file_configs` exists and contains an entry for the file's relative path:
    - `deep_merge(base_vars, file_specific_vars)` is called
    - Returns merged dictionary with file-specific overrides applied
-5. The merged variables are written to a temporary YAML file
-6. j2 (jinjanator) reads this file when processing the template
+6. The merged variables are written to a temporary YAML file
+7. j2 (jinjanator) reads this file when processing the template
+
+### Home Assistant API Integration
+
+At startup:
+1. `fetch_ha_entities()` is called to retrieve all entities from HA
+2. Uses `SUPERVISOR_TOKEN` environment variable for authentication
+3. Makes GET request to `http://supervisor/core/api/states`
+4. Converts entity list to dictionary keyed by entity_id
+5. Stores in `CACHED_HA_ENTITIES` global variable
+6. Gracefully handles API failures (entities simply won't be available in templates)
+
+The entities are fetched only once at startup and remain cached throughout the addon's lifecycle.
 
 ## Configuration
 
