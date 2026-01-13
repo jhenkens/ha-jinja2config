@@ -17,6 +17,63 @@ HASS_CONFIG_DIR = os.getenv('HASS_CONFIG_DIR')
 CONFIG_FILE_NAME = 'jinja2config.yaml'
 CONFIG_FILE_PATH = pathlib.Path(HASS_CONFIG_DIR) / CONFIG_FILE_NAME
 CACHED_CONFIG_VARS = {}
+FILE_CONFIGS_KEY = '.file_configs'
+
+def deep_merge(base: dict, override: dict) -> dict:
+    """Deep merge two dictionaries, with override values taking precedence.
+    
+    Recursively merges nested dictionaries. Lists and other types are replaced, not merged.
+    Returns a new dictionary without modifying the originals.
+    """
+    result = {}
+    # Start with all keys from base
+    for key, value in base.items():
+        if isinstance(value, dict):
+            result[key] = value.copy()
+        else:
+            result[key] = value
+    
+    # Apply overrides
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+def get_variables_for_file(file_path: pathlib.Path) -> dict:
+    """Get variables for a specific file, merging global and file-specific configs.
+    
+    Returns a deep merge of global variables with file-specific overrides.
+    The file path is relative to HASS_CONFIG_DIR.
+    """
+    # Start with base config (excluding .file_configs key)
+    base_vars = {k: v for k, v in CACHED_CONFIG_VARS.items() if k != FILE_CONFIGS_KEY}
+    
+    # Check if there are file-specific configs
+    if FILE_CONFIGS_KEY not in CACHED_CONFIG_VARS:
+        return base_vars
+    
+    file_configs = CACHED_CONFIG_VARS[FILE_CONFIGS_KEY]
+    if not isinstance(file_configs, dict):
+        return base_vars
+    
+    # Get the relative path from HASS_CONFIG_DIR
+    try:
+        relative_path = file_path.relative_to(HASS_CONFIG_DIR)
+        relative_path_str = str(relative_path)
+        
+        # Check if there's a config for this specific file
+        if relative_path_str in file_configs:
+            file_specific_config = file_configs[relative_path_str]
+            if isinstance(file_specific_config, dict):
+                print(f"Applying file-specific config for {relative_path_str}")
+                return deep_merge(base_vars, file_specific_config)
+    except ValueError:
+        # File is not relative to HASS_CONFIG_DIR
+        pass
+    
+    return base_vars
 
 def load_config_variables():
     """Load variables from jinja2config.yaml and cache them"""
@@ -68,9 +125,12 @@ def compile(file_path: pathlib.Path):
     error_log_file = file_path.parent / f"{file_path.name}.errors.log"
     result_content = f"# DO NOT EDIT: Generated from: {file_path.name}\n"
     
-    # Create a temporary YAML file with cached config variables for j2
+    # Get variables for this specific file (global + file-specific merged)
+    file_vars = get_variables_for_file(file_path)
+    
+    # Create a temporary YAML file with the merged config variables for j2
     with tempfile.NamedTemporaryFile(mode='w+t', delete=False, suffix=".yaml") as vars_file:
-        yaml.dump(CACHED_CONFIG_VARS, vars_file)
+        yaml.dump(file_vars, vars_file)
         vars_file_path = vars_file.name
     
     try:

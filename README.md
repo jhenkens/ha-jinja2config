@@ -99,6 +99,39 @@ climate:
 
 The addon automatically watches `jinja2config.yaml` for changes. When you modify this file, all templates will be automatically recompiled with the new values.
 
+### File-Specific Configuration
+
+You can override or extend variables for specific template files using the `.file_configs` key. This is useful when different templates need different values while still sharing common configuration.
+
+The configurations are **deep-merged**, meaning nested dictionaries are merged recursively rather than replaced entirely.
+
+```yaml
+# Global variables
+default_temp: 20
+rooms:
+  - name: "Living Room"
+    size: 30
+
+# File-specific overrides
+.file_configs:
+  # Path relative to config directory
+  automations/heating.yaml.jinja:
+    default_temp: 22  # Override for this file only
+    rooms:  # Deep-merged with global rooms
+      - name: "Garage"
+        size: 25
+    heating_mode: "aggressive"  # File-specific variable
+  
+  packages/lights.yaml.jinja:
+    light_transition: 2
+    light_brightness: 200
+```
+
+In this example:
+- `automations/heating.yaml.jinja` will have `default_temp: 22` (overridden) and access to both the global rooms plus the Garage room
+- `packages/lights.yaml.jinja` will have the global `default_temp: 20` plus its file-specific light variables
+- All other files use the global configuration
+
 ## Example
 
 I set up smart thermostats to control the underfloor heating for multiple rooms, requiring a certain amount of similar config per room. Using a template the amount of hand written yaml is greatly reduced, making it easier to manage and change as needed.

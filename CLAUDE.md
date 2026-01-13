@@ -109,6 +109,25 @@ These variables are then accessible in any `.yaml.jinja` file:
 {% endfor %}
 ```
 
+**File-Specific Configuration (`.file_configs`):**
+
+Users can override variables for specific files using the `.file_configs` key. The path is relative to `HASS_CONFIG_DIR` and configs are **deep-merged**:
+
+```yaml
+# Global vars
+default_temp: 20
+rooms:
+  - name: "Living Room"
+
+# File-specific overrides (deep-merged)
+.file_configs:
+  automations/heating.yaml.jinja:
+    default_temp: 22  # Override
+    extra_var: "value"  # Add new var
+```
+
+The `deep_merge()` function recursively merges nested dictionaries, so if both global and file-specific configs have a `settings` dictionary, they are merged together rather than the file-specific one replacing the global one entirely.
+
 ### 2. Automatic File Watching
 
 - Watches recursively for all `.yaml.jinja` files
@@ -159,11 +178,24 @@ SHUTDOWN = False         # Graceful shutdown flag
 
 ### Helper Functions
 
+- `deep_merge()`: Recursively merges two dictionaries for file-specific config overrides
+- `get_variables_for_file()`: Returns merged global + file-specific variables for a template
 - `find_all_jinja_templates()`: Reusable function to scan for all `.yaml.jinja` files
 - `load_config_variables()`: Updates global cache with variables from config file
 - `get_output_file()`: Strips `.jinja` extension to get output filename
-- `compile()`: Core compilation logic using cached variables
+- `compile()`: Core compilation logic using file-specific merged variables
 - `process_changes()`: Deduplicates and parallelizes compilation
+
+### Variable Resolution for Files
+
+When compiling a template:
+1. `get_variables_for_file(file_path)` is called
+2. Base variables are extracted from `CACHED_CONFIG_VARS` (excluding `.file_configs` key)
+3. If `.file_configs` exists and contains an entry for the file's relative path:
+   - `deep_merge(base_vars, file_specific_vars)` is called
+   - Returns merged dictionary with file-specific overrides applied
+4. The merged variables are written to a temporary YAML file
+5. j2 (jinjanator) reads this file when processing the template
 
 ## Configuration
 

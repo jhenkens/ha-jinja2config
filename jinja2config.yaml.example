@@ -53,3 +53,24 @@ network:
 devices:
   thermostat_model: "generic"
   sensor_prefix: "esphome"
+
+# File-specific configurations
+# Use .file_configs to override variables for specific template files
+# The path is relative to your Home Assistant config directory
+# These configs are deep-merged with the global config above
+.file_configs:
+  # Example: Override variables for a specific automation file
+  automations/heating.yaml.jinja:
+    default_temperature: 22  # Override global default_temperature for this file
+    rooms:  # This will be deep-merged with the global rooms list above
+      - name: "Garage"
+        id_prefix: "garage"
+        size: 25
+        kp: 80
+        ki: 0.002
+        kd: 800
+  
+  # Example: Add file-specific variables
+  packages/lights.yaml.jinja:
+    light_transition_time: 2
+    light_brightness_default: 200
