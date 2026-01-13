@@ -1,6 +1,6 @@
 name: "Jinja2Config"
 description: "Compile Home Assistant config files from Jinja2 templates"
-version: "1.2.0"
+version: "1.2.1"
 slug: "jinja2config"
 init: false
 homeassistant_api: true
