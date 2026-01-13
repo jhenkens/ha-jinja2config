@@ -57,6 +57,48 @@ With these settings, your templates would use the custom delimiters:
 /* This is a comment */
 ```
 
+## Using Variables with jinja2config.yaml
+
+You can create a `jinja2config.yaml` file in your Home Assistant config directory to define variables that will be available to all your Jinja2 templates. This is useful for sharing common values across multiple template files.
+
+### Creating jinja2config.yaml
+
+Create a file named `jinja2config.yaml` in your Home Assistant config directory (typically `/config`):
+
+```yaml
+# Example jinja2config.yaml
+house_name: "My Smart Home"
+default_temp: 20
+rooms:
+  - name: "Living Room"
+    size: 30
+  - name: "Bedroom"
+    size: 20
+heating_zones:
+  living_room: "zone_1"
+  bedroom: "zone_2"
+```
+
+### Using Variables in Templates
+
+In your `.yaml.jinja` templates, you can access these variables directly:
+
+```yaml
+# example.yaml.jinja
+# Welcome to {{ house_name }}
+
+climate:
+  - platform: generic_thermostat
+    target_temp: {{ default_temp }}
+    
+  {% for room in rooms %}
+  - name: {{ room.name }}
+    size: {{ room.size }}
+  {% endfor %}
+```
+
+The addon automatically watches `jinja2config.yaml` for changes. When you modify this file, all templates will be automatically recompiled with the new values.
+
 ## Example
 
 I set up smart thermostats to control the underfloor heating for multiple rooms, requiring a certain amount of similar config per room. Using a template the amount of hand written yaml is greatly reduced, making it easier to manage and change as needed.

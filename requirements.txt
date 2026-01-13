@@ -1,2 +1,3 @@
 jinjanator
 watchdog
+PyYAML
