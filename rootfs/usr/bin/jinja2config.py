@@ -293,7 +293,7 @@ class JinjaEventHandler(FileSystemEventHandler):
                 file_path = pathlib.Path(event.src_path)
                 if not is_file_skipped(file_path):
                     QUEUE.append(ChangeRecorder(file_path))
-            elif event.src_path == CONFIG_FILE_NAME:
+            elif event.src_path == CONFIG_FILE_PATH:
                 self._recompile_all_templates()
                 
     def on_created(self, event):
