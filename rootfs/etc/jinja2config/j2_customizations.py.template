@@ -31,5 +31,6 @@ def extra_tests():
         Returns: dict(name = function)
     """
     return dict(
-        startswith=lambda x, y: x.startswith(y)
+        startswith=lambda x, y: x.startswith(y),
+        contains=lambda x, y: x.contains(y)
     )
