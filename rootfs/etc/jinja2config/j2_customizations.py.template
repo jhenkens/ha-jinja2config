@@ -32,5 +32,5 @@ def extra_tests():
     """
     return dict(
         startswith=lambda x, y: x.startswith(y),
-        contains=lambda x, y: x.contains(y)
+        contains=lambda x, y: y in x
     )
