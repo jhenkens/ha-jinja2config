@@ -106,6 +106,9 @@ The addon automatically fetches all entities from your Home Assistant instance a
 Entities are refreshed:
 - At addon startup
 - Whenever `jinja2config.yaml` is modified (ensuring templates use current entity data)
+- Automatically, roughly once an hour - if the *set* of entity IDs has changed (e.g. an entity was added or removed) since the last refresh, all templates are recompiled. Entities whose state/attributes simply change do **not** trigger a recompile.
+
+If entities never show up (`ha_entities` is empty in every template), check the addon logs for a `Warning: Failed to fetch HA entities` message - this usually means the addon's Home Assistant API access needs to be re-granted, which can happen after a Supervisor/Core upgrade. The addon keeps using its last successfully fetched entity list if a refresh fails, rather than clearing it out.
 
 ```yaml
 # example.yaml.jinja

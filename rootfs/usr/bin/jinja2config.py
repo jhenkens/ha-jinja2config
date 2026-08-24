@@ -7,6 +7,8 @@ import subprocess
 import time
 import shutil
 import tempfile
+import hashlib
+import threading
 import yaml
 import requests
 from dataclasses import dataclass
@@ -19,9 +21,11 @@ CONFIG_FILE_NAME = 'jinja2config.yaml'
 CONFIG_FILE_PATH = pathlib.Path(HASS_CONFIG_DIR) / CONFIG_FILE_NAME
 CACHED_CONFIG_VARS = {}
 CACHED_HA_ENTITIES = None
+CACHED_ENTITY_ID_HASH = None
 FILE_CONFIGS_KEY = '.file_configs'
 SKIPPED_FILES_KEY = '.skipped_files'
 HA_ENTITIES_KEY = 'ha_entities'
+ENTITY_POLL_INTERVAL_SECONDS = 60 * 60
 
 # Home Assistant API configuration
 SUPERVISOR_TOKEN = os.getenv('SUPERVISOR_TOKEN')
@@ -29,26 +33,26 @@ HA_API_URL = 'http://supervisor/core/api'
 
 def fetch_ha_entities():
     """Fetch all entities from Home Assistant API.
-    
+
     Returns a dictionary with entity_id as keys and entity state objects as values.
     Returns None if the API is not accessible or an error occurs.
     """
     if not SUPERVISOR_TOKEN:
         print("Warning: SUPERVISOR_TOKEN not available, cannot fetch HA entities")
         return None
-    
+
     try:
         headers = {
             'Authorization': f'Bearer {SUPERVISOR_TOKEN}',
             'Content-Type': 'application/json',
         }
-        
+
         response = requests.get(
             f'{HA_API_URL}/states',
             headers=headers,
             timeout=10
         )
-        
+
         if response.status_code == 200:
             entities = response.json()
             # Convert to a dictionary keyed by entity_id for easier access
@@ -56,7 +60,12 @@ def fetch_ha_entities():
             print(f"Fetched {len(entity_dict)} entities from Home Assistant")
             return entity_dict
         else:
-            print(f"Warning: Failed to fetch HA entities, status code: {response.status_code}")
+            # Newer Supervisor releases can change how/whether an add-on's
+            # token is authorized to read all entity states, so surface the
+            # body here too - a 401/403 here almost always means the addon's
+            # HA API access needs to be re-granted (re-check the addon's
+            # "Home Assistant" permission after upgrading Supervisor/Core).
+            print(f"Warning: Failed to fetch HA entities, status code: {response.status_code}, body: {response.text[:500]}")
             return None
     except requests.exceptions.RequestException as e:
         print(f"Warning: Error fetching HA entities: {e}")
@@ -64,6 +73,51 @@ def fetch_ha_entities():
     except Exception as e:
         print(f"Warning: Unexpected error fetching HA entities: {e}")
         return None
+
+def compute_entity_id_hash(entities: dict) -> str:
+    """Compute a stable hash over the sorted set of entity IDs."""
+    sorted_ids = sorted(entities.keys())
+    return hashlib.sha256("\n".join(sorted_ids).encode()).hexdigest()
+
+def refresh_ha_entities(trigger_recompile_on_change: bool):
+    """Refresh CACHED_HA_ENTITIES from the HA API.
+
+    If the fetch fails, the previously cached entities are kept as-is rather
+    than being cleared - a transient API/permission failure shouldn't cause
+    every template that references ha_entities to fail to compile and have
+    its output file removed.
+
+    If trigger_recompile_on_change is True and the sorted set of entity IDs
+    differs from the last known set, all templates are queued for
+    recompilation.
+    """
+    global CACHED_HA_ENTITIES, CACHED_ENTITY_ID_HASH
+
+    fetched_entities = fetch_ha_entities()
+    if fetched_entities is None:
+        print("Warning: keeping previously cached HA entities since refresh failed")
+        return
+
+    new_hash = compute_entity_id_hash(fetched_entities)
+    entity_ids_changed = new_hash != CACHED_ENTITY_ID_HASH
+
+    CACHED_HA_ENTITIES = fetched_entities
+    CACHED_ENTITY_ID_HASH = new_hash
+
+    if trigger_recompile_on_change and entity_ids_changed:
+        print("Home Assistant entity list changed, recompiling all templates...")
+        for template_path in find_all_jinja_templates():
+            QUEUE.append(ChangeRecorder(template_path))
+
+def entity_poll_loop():
+    """Background loop that refreshes HA entities roughly once an hour and
+    recompiles all templates if the set of entity IDs has changed."""
+    last_poll = time.time()
+    while not SHUTDOWN:
+        time.sleep(1)
+        if time.time() - last_poll >= ENTITY_POLL_INTERVAL_SECONDS:
+            last_poll = time.time()
+            refresh_ha_entities(trigger_recompile_on_change=True)
 
 def is_file_skipped(file_path: pathlib.Path) -> bool:
     """Check if a file should be skipped based on .skipped_files configuration.
@@ -155,7 +209,7 @@ def get_variables_for_file(file_path: pathlib.Path) -> dict:
 
 def load_config_variables():
     """Load variables from jinja2config.yaml and cache them. Also refresh HA entities."""
-    global CACHED_CONFIG_VARS, CACHED_HA_ENTITIES
+    global CACHED_CONFIG_VARS
     if CONFIG_FILE_PATH.exists():
         try:
             with open(CONFIG_FILE_PATH, 'r') as f:
@@ -175,9 +229,9 @@ def load_config_variables():
     else:
         print(f"{CONFIG_FILE_NAME} not found, using empty context")
         CACHED_CONFIG_VARS = {}
-    
-    # Refresh Home Assistant entities
-    CACHED_HA_ENTITIES = fetch_ha_entities()
+
+    # Refresh Home Assistant entities (keeps prior cache on failure)
+    refresh_ha_entities(trigger_recompile_on_change=False)
 
 def check_dependencies():
     if not shutil.which('j2'):
@@ -358,6 +412,9 @@ def main():
     observer = Observer()
     observer.schedule(event_handler, HASS_CONFIG_DIR, recursive=True)
     observer.start()
+
+    entity_poll_thread = threading.Thread(target=entity_poll_loop, daemon=True)
+    entity_poll_thread.start()
 
     try:
         while not SHUTDOWN:
